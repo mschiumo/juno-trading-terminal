@@ -324,7 +324,7 @@ export default function EditClosedPositionModal({
             {/* Timestamp */}
             <div className="flex items-center gap-2 text-xs text-[#8b949e]">
               <Calendar className="w-3.5 h-3.5" />
-              <span>Closed: {new Date(position.closedAt).toLocaleString()}</span>
+              <span>Closed: {position.closedAt ? new Date(position.closedAt).toLocaleString() : 'N/A'}</span>
             </div>
           </div>
         </div>
