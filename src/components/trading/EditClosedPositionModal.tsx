@@ -43,8 +43,8 @@ export default function EditClosedPositionModal({
       setFormData({
         ticker: position.ticker,
         actualEntry: position.actualEntry.toString(),
-        plannedStop: position.plannedStop.toString(),
-        plannedTarget: position.plannedTarget.toString(),
+        plannedStop: position.plannedStop?.toString() || '',
+        plannedTarget: position.plannedTarget?.toString() || '',
         actualShares: position.actualShares.toString(),
         exitPrice: position.exitPrice?.toString() || '',
         notes: position.notes || '',
