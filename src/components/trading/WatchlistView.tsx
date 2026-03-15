@@ -1018,7 +1018,6 @@ export default function WatchlistView() {
     if (addedToCalendarIds.has(position.id)) return true;
     
     // Check against fetched calendar trades
-    if (!position.closedAt) return false;
     const positionDate = position.closedAt.split('T')[0];
     return calendarTrades.some(
       t => t.symbol.toUpperCase() === position.ticker.toUpperCase() && 
@@ -1045,10 +1044,10 @@ export default function WatchlistView() {
     setConfirmingAddToCalendar(position);
     // Initialize form data with position values
     setCalendarFormData({
-      entryPrice: (position.actualEntry ?? position.plannedEntry ?? 0).toString(),
-      exitPrice: (position.exitPrice ?? position.plannedTarget ?? 0).toString(),
-      shares: position.actualShares?.toString() || '0',
-      takeProfit: position.plannedTarget?.toString() || '',
+      entryPrice: (position.actualEntry || position.plannedEntry).toString(),
+      exitPrice: (position.exitPrice || position.plannedTarget).toString(),
+      shares: position.actualShares.toString(),
+      takeProfit: position.plannedTarget.toString(),
     });
   };
 
