@@ -201,3 +201,20 @@ export function isTradingDay(): boolean {
   // Monday = 1, Friday = 5
   return dayOfWeek >= 1 && dayOfWeek <= 5;
 }
+
+/**
+ * Get date string (YYYY-MM-DD) from a timestamp in EST
+ * Extracts just the date portion from an ISO timestamp
+ */
+export function getESTDateFromTimestamp(timestamp: string): string {
+  const date = new Date(timestamp);
+  const estDateStr = date.toLocaleDateString('en-US', {
+    timeZone: EST_TIMEZONE,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit'
+  });
+  
+  const [month, day, year] = estDateStr.split('/');
+  return `${year}-${month}-${day}`;
+}
