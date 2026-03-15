@@ -85,3 +85,4 @@ export async function deleteClosedPosition(id: string, userId: string = 'default
   await redis.set(getKey(userId), JSON.stringify(filtered));
   return true;
 }
+// Trigger rebuild
