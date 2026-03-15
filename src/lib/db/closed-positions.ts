@@ -8,16 +8,16 @@ import { getRedisClient } from '@/lib/redis';
 export interface ClosedPosition {
   id: string;
   ticker: string;
-  plannedEntry?: number;
-  plannedStop?: number;
-  plannedTarget?: number;
+  plannedEntry: number;
+  plannedStop: number;
+  plannedTarget: number;
   actualEntry: number;
   actualShares: number;
   exitPrice?: number;
   exitDate?: string;
   pnl?: number;
   openedAt: string;
-  closedAt?: string;
+  closedAt: string;
   notes?: string;
 }
 
