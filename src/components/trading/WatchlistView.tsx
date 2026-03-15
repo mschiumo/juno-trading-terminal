@@ -1045,10 +1045,10 @@ export default function WatchlistView() {
     setConfirmingAddToCalendar(position);
     // Initialize form data with position values
     setCalendarFormData({
-      entryPrice: (position.actualEntry || position.plannedEntry).toString(),
-      exitPrice: (position.exitPrice || position.plannedTarget).toString(),
-      shares: position.actualShares.toString(),
-      takeProfit: position.plannedTarget.toString(),
+      entryPrice: (position.actualEntry ?? position.plannedEntry ?? 0).toString(),
+      exitPrice: (position.exitPrice ?? position.plannedTarget ?? 0).toString(),
+      shares: position.actualShares?.toString() || '0',
+      takeProfit: position.plannedTarget?.toString() || '',
     });
   };
 
