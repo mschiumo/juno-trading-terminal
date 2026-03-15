@@ -218,3 +218,30 @@ export function getESTDateFromTimestamp(timestamp: string): string {
   const [month, day, year] = estDateStr.split('/');
   return `${year}-${month}-${day}`;
 }
+
+/**
+ * Parse a date string to EST and return as ISO string with -05:00 offset
+ */
+export function parseDateToEST(dateStr: string): string {
+  // Handle YYYY-MM-DD format
+  if (dateStr.includes('-') && dateStr.length === 10) {
+    return `${dateStr}T00:00:00${EST_OFFSET}`;
+  }
+  
+  // Handle other formats by parsing
+  const date = new Date(dateStr);
+  const estDateStr = date.toLocaleString('en-US', {
+    timeZone: EST_TIMEZONE,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: false
+  });
+  
+  const [datePart, timePart] = estDateStr.split(', ');
+  const [month, day, year] = datePart.split('/');
+  return `${year}-${month}-${day}T${timePart}${EST_OFFSET}`;
+}
