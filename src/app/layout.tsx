@@ -13,7 +13,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Juno Trading Terminal",
+  title: "Trading Terminal",
   description: "Professional trading journal and portfolio management",
   icons: {
     icon: "/favicon.svg",

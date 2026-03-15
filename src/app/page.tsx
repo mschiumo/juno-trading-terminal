@@ -69,11 +69,20 @@ function TradingTerminalContent() {
         <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-4 md:py-6">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 md:w-12 md:h-12 rounded-full bg-gradient-to-br from-[#ff6b35] to-[#ff8c5a] flex items-center justify-center text-white font-bold text-lg md:text-xl shadow-lg">
-                J
+              <div className="w-10 h-10 md:w-12 md:h-12 rounded-full bg-[#0d1117] border border-[#30363d] flex items-center justify-center shadow-lg">
+                <svg width="28" height="28" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <rect x="6" y="12" width="4" height="12" rx="1" fill="#3fb950"/>
+                  <rect x="6" y="8" width="4" height="2" rx="1" fill="#3fb950"/>
+                  <rect x="14" y="8" width="4" height="16" rx="1" fill="#f85149"/>
+                  <rect x="14" y="4" width="4" height="2" rx="1" fill="#f85149"/>
+                  <rect x="22" y="6" width="4" height="18" rx="1" fill="#3fb950"/>
+                  <rect x="22" y="4" width="4" height="2" rx="1" fill="#3fb950"/>
+                  <path d="M4 28 L12 20 L20 24 L28 16" stroke="#58a6ff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" fill="none"/>
+                  <polygon points="26,14 28,16 30,14" fill="#58a6ff"/>
+                </svg>
               </div>
               <div>
-                <h1 className="text-lg md:text-2xl font-bold text-white">Juno Trading Terminal</h1>
+                <h1 className="text-lg md:text-2xl font-bold text-white">Trading Terminal</h1>
                 <p className="hidden sm:block text-xs md:text-sm text-[#8b949e]">Professional trading journal & portfolio management</p>
               </div>
             </div>
@@ -185,7 +194,7 @@ function TradingTerminalContent() {
         <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-3 md:py-4">
           <div className="flex flex-col md:flex-row items-center justify-between gap-2">
             <p className="text-center md:text-left text-xs md:text-sm text-[#8b949e]">
-              Juno Trading Terminal © {new Date().getFullYear()}
+              Trading Terminal © {new Date().getFullYear()}
             </p>
             <div className="flex items-center gap-4">
               <a 
