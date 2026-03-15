@@ -43,8 +43,8 @@ export default function EditClosedPositionModal({
       setFormData({
         ticker: position.ticker,
         actualEntry: position.actualEntry.toString(),
-        plannedStop: position.plannedStop.toString(),
-        plannedTarget: position.plannedTarget.toString(),
+        plannedStop: position.plannedStop?.toString() || '',
+        plannedTarget: position.plannedTarget?.toString() || '',
         actualShares: position.actualShares.toString(),
         exitPrice: position.exitPrice?.toString() || '',
         notes: position.notes || '',
@@ -156,7 +156,7 @@ export default function EditClosedPositionModal({
 
   if (!isOpen || !position) return null;
 
-  const isLong = position.plannedTarget > position.plannedEntry;
+  const isLong = (position.plannedTarget || 0) > (position.plannedEntry || 0);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
@@ -322,7 +322,7 @@ export default function EditClosedPositionModal({
             {/* Timestamp */}
             <div className="flex items-center gap-2 text-xs text-[#8b949e]">
               <Calendar className="w-3.5 h-3.5" />
-              <span>Closed: {new Date(position.closedAt).toLocaleString()}</span>
+              <span>Closed: {position.closedAt ? new Date(position.closedAt).toLocaleString() : 'N/A'}</span>
             </div>
           </div>
         </div>

@@ -8,16 +8,16 @@ import { getRedisClient } from '@/lib/redis';
 export interface ClosedPosition {
   id: string;
   ticker: string;
-  plannedEntry: number;
-  plannedStop: number;
-  plannedTarget: number;
+  plannedEntry?: number;
+  plannedStop?: number;
+  plannedTarget?: number;
   actualEntry: number;
   actualShares: number;
   exitPrice?: number;
   exitDate?: string;
   pnl?: number;
   openedAt: string;
-  closedAt: string;
+  closedAt?: string;
   notes?: string;
 }
 
@@ -85,4 +85,3 @@ export async function deleteClosedPosition(id: string, userId: string = 'default
   await redis.set(getKey(userId), JSON.stringify(filtered));
   return true;
 }
-// Trigger rebuild
