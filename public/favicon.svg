@@ -1,0 +1,46 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <!-- Background with gradient -->
+  <defs>
+    <linearGradient id="bgGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#0d1117"/>
+      <stop offset="100%" style="stop-color:#161b22"/>
+    </linearGradient>
+    <linearGradient id="bullGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#3fb950"/>
+      <stop offset="100%" style="stop-color:#2ea043"/>
+    </linearGradient>
+    <linearGradient id="bearGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#f85149"/>
+      <stop offset="100%" style="stop-color:#da3633"/>
+    </linearGradient>
+  </defs>
+  
+  <!-- Rounded square background -->
+  <rect x="5" y="5" width="90" height="90" rx="18" ry="18" fill="url(#bgGradient)" stroke="#30363d" stroke-width="2"/>
+  
+  <!-- Candlestick 1 (green/bullish - showing upward trend) -->
+  <rect x="22" y="35" width="10" height="30" fill="url(#bullGradient)" rx="1"/>
+  <rect x="26" y="25" width="2" height="10" fill="#3fb950"/>
+  <rect x="26" y="65" width="2" height="10" fill="#3fb950"/>
+  
+  <!-- Candlestick 2 (red/bearish) -->
+  <rect x="38" y="40" width="10" height="25" fill="url(#bearGradient)" rx="1"/>
+  <rect x="42" y="30" width="2" height="10" fill="#f85149"/>
+  <rect x="42" y="65" width="2" height="5" fill="#f85149"/>
+  
+  <!-- Candlestick 3 (green/bullish - taller, showing strong upward movement) -->
+  <rect x="54" y="28" width="10" height="35" fill="url(#bullGradient)" rx="1"/>
+  <rect x="58" y="18" width="2" height="10" fill="#3fb950"/>
+  <rect x="58" y="63" width="2" height="15" fill="#3fb950"/>
+  
+  <!-- Upward trend line -->
+  <polyline points="18,72 35,55 50,62 68,38 82,28" 
+            fill="none" 
+            stroke="#58a6ff" 
+            stroke-width="3" 
+            stroke-linecap="round" 
+            stroke-linejoin="round"/>
+  
+  <!-- Arrow head for trend line -->
+  <polygon points="82,28 78,32 78,30 74,30 74,26 78,26 78,24" fill="#58a6ff"/>
+</svg>
