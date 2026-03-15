@@ -156,7 +156,9 @@ export default function EditClosedPositionModal({
 
   if (!isOpen || !position) return null;
 
-  const isLong = position.plannedTarget > position.plannedEntry;
+  const isLong = position.plannedTarget != null && position.plannedEntry != null 
+    ? position.plannedTarget > position.plannedEntry 
+    : true;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
