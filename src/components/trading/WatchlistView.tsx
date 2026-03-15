@@ -1018,6 +1018,7 @@ export default function WatchlistView() {
     if (addedToCalendarIds.has(position.id)) return true;
     
     // Check against fetched calendar trades
+    if (!position.closedAt) return false;
     const positionDate = position.closedAt.split('T')[0];
     return calendarTrades.some(
       t => t.symbol.toUpperCase() === position.ticker.toUpperCase() && 
