@@ -261,11 +261,13 @@ export default function NewsScreenerCard() {
                     </span>
                   )}
                   
+                  
                   {/* Source */}
                   <span className="text-[10px] text-[#8b949e]">
                     {item.source}
                   </span>
                 </div>
+                
                 
                 {/* Time */}
                 <span className="text-[10px] text-[#8b949e] whitespace-nowrap">
@@ -273,16 +275,19 @@ export default function NewsScreenerCard() {
                 </span>
               </div>
               
+              
               {/* Headline */}
               <h3 className="text-sm font-medium text-white group-hover:text-[#ff6b35] transition-colors mb-2 line-clamp-2">
                 {item.headline}
                 <ExternalLink className="w-3 h-3 inline ml-1 opacity-0 group-hover:opacity-50 transition-opacity" />
               </h3>
               
+              
               {/* Summary */}
               <p className="text-xs text-[#8b949e] line-clamp-2 mb-3">
                 {item.summary}
               </p>
+              
               
               {/* Related Tickers */}
               {item.related.length > 0 && (
