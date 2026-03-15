@@ -29,7 +29,7 @@ export async function POST(request: NextRequest) {
       );
     }
     
-    const redis = await getRedisClient();
+    const redis = getRedisClient();
     const id = `${DAILY_JOURNAL_PREFIX}${date}`;
     const now = new Date().toISOString();
     
@@ -40,7 +40,7 @@ export async function POST(request: NextRequest) {
       id,
       date,
       prompts: prompts || [],
-      createdAt: existing.createdAt || now,
+      createdAt: (existing?.createdAt as string) || now,
       updatedAt: now
     };
     
@@ -54,7 +54,7 @@ export async function POST(request: NextRequest) {
     
     return NextResponse.json({
       success: true,
-      message: existing.createdAt ? 'Journal entry updated' : 'Journal entry created',
+      message: existing?.createdAt ? 'Journal entry updated' : 'Journal entry created',
       entry
     });
     
@@ -75,7 +75,7 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const date = searchParams.get('date');
     
-    const redis = await getRedisClient();
+    const redis = getRedisClient();
     
     if (date) {
       // Get specific date
@@ -92,11 +92,11 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({
         success: true,
         entry: {
-          id: data.id,
-          date: data.date,
-          prompts: JSON.parse(data.prompts || '[]'),
-          createdAt: data.createdAt,
-          updatedAt: data.updatedAt
+          id: data.id as string,
+          date: data.date as string,
+          prompts: JSON.parse((data.prompts as string) || '[]'),
+          createdAt: data.createdAt as string,
+          updatedAt: data.updatedAt as string
         } as DailyJournalEntry
       });
     }
@@ -109,11 +109,11 @@ export async function GET(request: NextRequest) {
       const data = await redis.hGetAll(key);
       if (data && data.id) {
         entries.push({
-          id: data.id,
-          date: data.date,
-          prompts: JSON.parse(data.prompts || '[]'),
-          createdAt: data.createdAt,
-          updatedAt: data.updatedAt
+          id: data.id as string,
+          date: data.date as string,
+          prompts: JSON.parse((data.prompts as string) || '[]'),
+          createdAt: data.createdAt as string,
+          updatedAt: data.updatedAt as string
         });
       }
     }
@@ -151,7 +151,7 @@ export async function DELETE(request: NextRequest) {
       );
     }
     
-    const redis = await getRedisClient();
+    const redis = getRedisClient();
     await redis.del(`${DAILY_JOURNAL_PREFIX}${date}`);
     
     return NextResponse.json({
