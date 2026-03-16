@@ -1,32 +1,27 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { TrendingUp, TrendingDown, RefreshCw, BarChart3 } from 'lucide-react';
+import { TrendingUp, TrendingDown, RefreshCw } from 'lucide-react';
 
 interface IndexData {
   symbol: string;
-  name: string;
   price: number;
   change: number;
   changePercent: number;
-  status: 'up' | 'down';
 }
 
 interface IndicesData {
   data: IndexData[];
   timestamp: string;
   source: 'live' | 'fallback' | 'cache';
-  provider: string;
-  cached: boolean;
 }
 
-const REFRESH_INTERVAL = 60000; // 60 seconds to stay under Polygon's 5 calls/minute limit
+const REFRESH_INTERVAL = 60000; // 60 seconds
+const INDICES = ['DIA', 'SPY', 'QQQ'];
 
 export default function IndicesWidget() {
   const [data, setData] = useState<IndicesData | null>(null);
   const [loading, setLoading] = useState(true);
-  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
-  const [nextRefresh, setNextRefresh] = useState(REFRESH_INTERVAL);
   const [error, setError] = useState<string | null>(null);
 
   const fetchIndices = useCallback(async () => {
@@ -44,8 +39,6 @@ export default function IndicesWidget() {
       
       if (result.success) {
         setData(result);
-        setLastUpdated(new Date());
-        setNextRefresh(REFRESH_INTERVAL);
       } else {
         throw new Error('API returned unsuccessful response');
       }
@@ -71,186 +64,106 @@ export default function IndicesWidget() {
     return () => clearInterval(intervalId);
   }, [fetchIndices]);
 
-  // Countdown timer for next refresh
-  useEffect(() => {
-    const countdownId = setInterval(() => {
-      setNextRefresh((prev) => {
-        if (prev <= 1000) {
-          return REFRESH_INTERVAL;
-        }
-        return prev - 1000;
-      });
-    }, 1000);
-
-    return () => clearInterval(countdownId);
-  }, []);
-
   const formatPrice = (price: number) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2
-    }).format(price);
+    return price.toFixed(2);
   };
 
-  const formatLastUpdated = () => {
-    if (!lastUpdated) return '';
-    return lastUpdated.toLocaleTimeString('en-US', {
-      hour: 'numeric',
-      minute: '2-digit',
-      hour12: true
-    });
-  };
-
-  const formatCountdown = () => {
-    const seconds = Math.ceil(nextRefresh / 1000);
-    return `${seconds}s`;
-  };
-
-  // Skeleton loader
-  if (loading && !data) {
-    return (
-      <div className="bg-[#161b22] border border-[#30363d] rounded-xl overflow-hidden">
-        <div className="flex items-center justify-between px-6 py-4 border-b border-[#30363d] bg-[#0d1117]/50">
-          <div className="flex items-center gap-3">
-            <div className="w-5 h-5 bg-[#30363d] rounded animate-pulse"></div>
-            <div className="w-32 h-5 bg-[#30363d] rounded animate-pulse"></div>
-          </div>
-          <div className="w-16 h-4 bg-[#30363d] rounded animate-pulse"></div>
-        </div>
-        <div className="p-6">
-          <div className="grid grid-cols-3 gap-4">
-            {[1, 2, 3].map((i) => (
-              <div key={i} className="bg-[#0d1117] rounded-lg p-4 border border-[#30363d]">
-                <div className="w-12 h-4 bg-[#30363d] rounded animate-pulse mb-2"></div>
-                <div className="w-24 h-6 bg-[#30363d] rounded animate-pulse mb-2"></div>
-                <div className="w-16 h-4 bg-[#30363d] rounded animate-pulse"></div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-    );
-  }
-
+  // Get indices data or empty array
   const indices = data?.data || [];
+  
+  // Create a map for quick lookup
+  const indexMap = new Map(indices.map(i => [i.symbol, i]));
 
   return (
-    <div className="bg-[#161b22] border border-[#30363d] rounded-xl overflow-hidden">
-      {/* Header */}
-      <div className="flex items-center justify-between px-6 py-4 border-b border-[#30363d] bg-[#0d1117]/50">
-        <div className="flex items-center gap-3">
-          <BarChart3 className="w-5 h-5 text-[#F97316]" />
-          <h3 className="text-lg font-semibold text-white">Market Indices</h3>
-        </div>
-        <div className="flex items-center gap-3">
-          {lastUpdated && (
-            <span className="text-xs text-[#8b949e] hidden sm:inline">
-              Next: {formatCountdown()}
-            </span>
-          )}
-          <button
-            onClick={fetchIndices}
-            disabled={loading}
-            className="p-2 hover:bg-[#30363d] rounded-lg transition-colors disabled:opacity-50"
-            title="Refresh indices"
-          >
-            <RefreshCw className={`w-4 h-4 text-[#8b949e] ${loading ? 'animate-spin' : ''}`} />
-          </button>
-        </div>
-      </div>
+    <div className="flex items-center gap-2 py-1.5 px-3 bg-[#0d1117] border border-[#30363d] rounded-lg">
+      {/* Label */}
+      <span className="text-[10px] uppercase tracking-wider text-[#8b949e] font-medium mr-1 hidden sm:inline">
+        Indices
+      </span>
 
-      {/* Content */}
-      <div className="p-6">
-        {error ? (
-          <div className="text-center py-4 text-[#da3633] text-sm">
-            {error}
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            {indices.map((index) => (
-              <a
-                key={index.symbol}
-                href={`https://www.tradingview.com/chart/?symbol=${index.symbol}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="group bg-[#0d1117] rounded-lg p-4 border border-[#30363d] hover:border-[#F97316]/50 transition-all"
+      {/* Index Pills */}
+      <div className="flex items-center gap-2 flex-wrap">
+        {INDICES.map((symbol) => {
+          const index = indexMap.get(symbol);
+          
+          if (loading && !index) {
+            return (
+              <div 
+                key={symbol} 
+                className="flex items-center gap-1.5 px-2 py-0.5 bg-[#161b22] rounded text-xs animate-pulse"
               >
-                {/* Symbol and Name */}
-                <div className="flex items-center gap-2 mb-3">
-                  {index.change >= 0 ? (
-                    <TrendingUp className="w-4 h-4 text-[#22c55e] flex-shrink-0" />
-                  ) : (
-                    <TrendingDown className="w-4 h-4 text-[#da3633] flex-shrink-0" />
-                  )}
-                  <span className="font-bold text-white group-hover:text-[#F97316] transition-colors">
-                    {index.symbol}
-                  </span>
-                </div>
-
-                {/* Price */}
-                <div className="text-2xl font-bold text-white mb-2">
-                  {formatPrice(index.price)}
-                </div>
-
-                {/* Change */}
-                <div className="flex items-center gap-2"
-                >
-                  <span
-                    className={`text-sm font-medium ${
-                      index.change >= 0 ? 'text-[#22c55e]' : 'text-[#da3633]'
-                    }`}
-                  >
-                    {index.change >= 0 ? '+' : ''}{index.change.toFixed(2)}
-                  </span>
-                  <span
-                    className={`text-xs px-2 py-0.5 rounded-full font-medium ${
-                      index.changePercent >= 0
-                        ? 'bg-[#22c55e]/20 text-[#22c55e]'
-                        : 'bg-[#da3633]/20 text-[#da3633]'
-                    }`}
-                  >
-                    {index.changePercent >= 0 ? '+' : ''}{index.changePercent.toFixed(2)}%
-                  </span>
-                </div>
-
-                {/* Full name - visible on hover */}
-                <div className="mt-2 text-xs text-[#8b949e] opacity-0 group-hover:opacity-100 transition-opacity">
-                  {index.name}
-                </div>
-              </a>
-            ))}
-          </div>
-        )}
-
-        {/* Footer info */}
-        <div className="mt-4 flex items-center justify-between text-xs text-[#8b949e]">
-          <span>
-            {data?.source === 'live' && (
-              <span className="flex items-center gap-1">
-                <span className="w-1.5 h-1.5 rounded-full bg-[#22c55e]"></span>
-                Live data
+                <span className="text-[#8b949e]">{symbol}</span>
+                <span className="w-10 h-3 bg-[#30363d] rounded"></span>
+              </div>
+            );
+          }
+          
+          if (!index) return null;
+          
+          const isPositive = index.changePercent >= 0;
+          
+          return (
+            <a
+              key={symbol}
+              href={`https://www.tradingview.com/chart/?symbol=${symbol}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-1 px-2 py-0.5 bg-[#161b22] hover:bg-[#1f2937] rounded border border-[#30363d] hover:border-[#484f58] transition-colors text-xs"
+            >
+              {/* Symbol */}
+              <span className="font-semibold text-white">{symbol}</span>
+              
+              {/* Divider */}
+              <span className="text-[#484f58]">|</span>
+              
+              {/* Price */}
+              <span className="text-[#c9d1d9] tabular-nums">
+                ${formatPrice(index.price)}
               </span>
-            )}
-            {data?.source === 'fallback' && (
-              <span className="flex items-center gap-1">
-                <span className="w-1.5 h-1.5 rounded-full bg-[#d29922]"></span>
-                Demo data
+              
+              {/* Change % with color */}
+              <span 
+                className={`tabular-nums font-medium ${
+                  isPositive ? 'text-[#22c55e]' : 'text-[#da3633]'
+                }`}
+              >
+                {isPositive ? '+' : ''}{index.changePercent.toFixed(2)}%
               </span>
-            )}
-            {data?.source === 'cache' && (
-              <span className="flex items-center gap-1">
-                <span className="w-1.5 h-1.5 rounded-full bg-[#58a6ff]"></span>
-                Cached
-              </span>
-            )}
-          </span>
-          <span>
-            {lastUpdated && `Updated ${formatLastUpdated()}`}
-          </span>
-        </div>
+              
+              {/* Trend icon */}
+              {isPositive ? (
+                <TrendingUp className="w-3 h-3 text-[#22c55e]" />
+              ) : (
+                <TrendingDown className="w-3 h-3 text-[#da3633]" />
+              )}
+            </a>
+          );
+        })}
       </div>
+
+      {/* Divider */}
+      <div className="w-px h-4 bg-[#30363d] mx-1"></div>
+
+      {/* Refresh button */}
+      <button
+        onClick={fetchIndices}
+        disabled={loading}
+        className="p-1 hover:bg-[#30363d] rounded transition-colors disabled:opacity-50"
+        title="Refresh indices"
+      >
+        <RefreshCw className={`w-3 h-3 text-[#8b949e] ${loading ? 'animate-spin' : ''}`} />
+      </button>
+
+      {/* Source indicator dot */}
+      {!error && data && (
+        <div 
+          className={`w-1.5 h-1.5 rounded-full ${
+            data.source === 'live' ? 'bg-[#22c55e]' : 
+            data.source === 'cache' ? 'bg-[#58a6ff]' : 'bg-[#d29922]'
+          }`}
+          title={data.source === 'live' ? 'Live data' : data.source === 'cache' ? 'Cached' : 'Demo data'}
+        />
+      )}
     </div>
   );
 }
