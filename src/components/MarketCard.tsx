@@ -1,9 +1,10 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { TrendingUp, TrendingDown, RefreshCw, DollarSign, ExternalLink } from 'lucide-react';
 import MarketCountdown from './MarketCountdown';
+import MarketWatchlist from './market/MarketWatchlist';
 
 interface MarketItem {
   symbol: string;
@@ -22,7 +23,7 @@ interface MarketData {
   lastUpdated: string;
 }
 
-type MarketTab = 'indices' | 'stocks' | 'commodities' | 'crypto';
+type MarketTab = 'indices' | 'stocks' | 'commodities' | 'crypto' | 'watchlist';
 type DataSource = 'live' | 'partial' | 'fallback';
 
 export default function MarketCard() {
@@ -32,7 +33,7 @@ export default function MarketCard() {
   // Get tab from URL query param, default to 'indices'
   const getTabFromUrl = useCallback((): MarketTab => {
     const tab = searchParams.get('marketTab');
-    if (tab === 'stocks' || tab === 'commodities' || tab === 'crypto') return tab;
+    if (tab === 'stocks' || tab === 'commodities' || tab === 'crypto' || tab === 'watchlist') return tab;
     return 'indices';
   }, [searchParams]);
 
@@ -150,19 +151,26 @@ export default function MarketCard() {
 
       {/* Segmented Control Tabs - Mobile Responsive */}
       <div className="segmented-control mb-5 overflow-x-auto scrollbar-hide">
-        {(['indices', 'stocks', 'commodities', 'crypto'] as const).map((tab) => (
+        {(['indices', 'stocks', 'commodities', 'crypto', 'watchlist'] as const).map((tab) => (
           <button
             key={tab}
             onClick={() => setActiveTab(tab)}
             className={`segmented-btn whitespace-nowrap ${activeTab === tab ? 'active' : ''}`}
           >
-            {tab.charAt(0).toUpperCase() + tab.slice(1)}
+            {tab === 'watchlist' ? 'My Watchlist' : tab.charAt(0).toUpperCase() + tab.slice(1)}
           </button>
         ))}
       </div>
 
-      {/* Market Stats */}
-      {currentData.length > 0 && (
+      {/* Watchlist Tab Content */}
+      {activeTab === 'watchlist' && (
+        <Suspense fallback={<div className="text-center py-8 text-[#8b949e]">Loading watchlist...</div>}>
+          <MarketWatchlist />
+        </Suspense>
+      )}
+
+      {/* Market Stats - Hidden on watchlist tab */}
+      {activeTab !== 'watchlist' && currentData.length > 0 && (
         <div className="flex items-center justify-between mb-4 px-1">
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-1.5">
@@ -178,57 +186,59 @@ export default function MarketCard() {
         </div>
       )}
 
-      {/* Market Data - Grid Layout */}
-      <div className="max-h-[500px] overflow-y-auto pr-1">
-        {loading ? (
-          <div className="text-center py-8 text-[#8b949e]">
-            <RefreshCw className="w-8 h-8 animate-spin mx-auto mb-2 text-[#ff6b35]" />
-            <p className="text-sm">Loading market data...</p>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
-            {currentData.map((item) => (
-              <a
-                key={item.symbol}
-                href={`https://www.tradingview.com/chart/?symbol=${getTradingViewSymbol(item.symbol, activeTab === 'crypto')}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="p-3 sm:p-4 bg-[#0d1117] rounded-xl border border-[#30363d] hover:border-[#ff6b35]/50 transition-all block group min-w-0"
-              >
-                <div className="flex items-center justify-between mb-2 min-w-0">
-                  <div className="flex items-center gap-1.5 min-w-0 flex-1">
-                    {item.change >= 0 ? (
-                      <TrendingUp className="w-3.5 h-3.5 text-[#238636] flex-shrink-0" />
-                    ) : (
-                      <TrendingDown className="w-3.5 h-3.5 text-[#da3633] flex-shrink-0" />
-                    )}
-                    <span className="font-semibold text-white group-hover:text-[#ff6b35] transition-colors flex items-center gap-1 truncate">
-                      <span className="truncate">{item.symbol}</span>
-                      <ExternalLink className="w-3 h-3 opacity-50 flex-shrink-0" />
+      {/* Market Data - Grid Layout - Hidden on watchlist tab */}
+      {activeTab !== 'watchlist' && (
+        <div className="max-h-[500px] overflow-y-auto pr-1">
+          {loading ? (
+            <div className="text-center py-8 text-[#8b949e]">
+              <RefreshCw className="w-8 h-8 animate-spin mx-auto mb-2 text-[#ff6b35]" />
+              <p className="text-sm">Loading market data...</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
+              {currentData.map((item) => (
+                <a
+                  key={item.symbol}
+                  href={`https://www.tradingview.com/chart/?symbol=${getTradingViewSymbol(item.symbol, activeTab === 'crypto')}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="p-3 sm:p-4 bg-[#0d1117] rounded-xl border border-[#30363d] hover:border-[#ff6b35]/50 transition-all block group min-w-0"
+                >
+                  <div className="flex items-center justify-between mb-2 min-w-0">
+                    <div className="flex items-center gap-1.5 min-w-0 flex-1">
+                      {item.change >= 0 ? (
+                        <TrendingUp className="w-3.5 h-3.5 text-[#238636] flex-shrink-0" />
+                      ) : (
+                        <TrendingDown className="w-3.5 h-3.5 text-[#da3633] flex-shrink-0" />
+                      )}
+                      <span className="font-semibold text-white group-hover:text-[#ff6b35] transition-colors flex items-center gap-1 truncate">
+                        <span className="truncate">{item.symbol}</span>
+                        <ExternalLink className="w-3 h-3 opacity-50 flex-shrink-0" />
+                      </span>
+                    </div>
+                    <span className={`text-xs font-bold px-2 py-0.5 rounded-full flex-shrink-0 ml-2 ${
+                      item.change >= 0
+                        ? 'bg-[#238636]/20 text-[#238636]'
+                        : 'bg-[#da3633]/20 text-[#da3633]'
+                    }`}>
+                      {item.change >= 0 ? '+' : ''}{item.changePercent.toFixed(2)}%
                     </span>
                   </div>
-                  <span className={`text-xs font-bold px-2 py-0.5 rounded-full flex-shrink-0 ml-2 ${
-                    item.change >= 0 
-                      ? 'bg-[#238636]/20 text-[#238636]' 
-                      : 'bg-[#da3633]/20 text-[#da3633]'
-                  }`}>
-                    {item.change >= 0 ? '+' : ''}{item.changePercent.toFixed(2)}%
-                  </span>
-                </div>
-                
-                <p className="text-xs text-[#8b949e] mb-3 truncate">{item.name}</p>
-                
-                <div className="flex items-baseline justify-between min-w-0">
-                  <span className="metric-value text-lg sm:text-xl truncate">{formatPrice(item.price)}</span>
-                  <span className={`text-xs font-medium flex-shrink-0 ml-2 ${item.change >= 0 ? 'text-[#238636]' : 'text-[#da3633]'}`}>
-                    {item.change >= 0 ? '+' : ''}{item.change.toFixed(2)}
-                  </span>
-                </div>
-              </a>
-            ))}
-          </div>
-        )}
-      </div>
+
+                  <p className="text-xs text-[#8b949e] mb-3 truncate">{item.name}</p>
+
+                  <div className="flex items-baseline justify-between min-w-0">
+                    <span className="metric-value text-lg sm:text-xl truncate">{formatPrice(item.price)}</span>
+                    <span className={`text-xs font-medium flex-shrink-0 ml-2 ${item.change >= 0 ? 'text-[#238636]' : 'text-[#da3633]'}`}>
+                      {item.change >= 0 ? '+' : ''}{item.change.toFixed(2)}
+                    </span>
+                  </div>
+                </a>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
