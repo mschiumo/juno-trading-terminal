@@ -29,7 +29,7 @@ export async function POST(request: NextRequest) {
       );
     }
     
-    const redis = getRedisClient();
+    const redis = await getRedisClient();
     const id = `${DAILY_JOURNAL_PREFIX}${date}`;
     const now = new Date().toISOString();
     
@@ -75,7 +75,7 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const date = searchParams.get('date');
     
-    const redis = getRedisClient();
+    const redis = await getRedisClient();
     
     if (date) {
       // Get specific date
@@ -151,7 +151,7 @@ export async function DELETE(request: NextRequest) {
       );
     }
     
-    const redis = getRedisClient();
+    const redis = await getRedisClient();
     await redis.del(`${DAILY_JOURNAL_PREFIX}${date}`);
     
     return NextResponse.json({
