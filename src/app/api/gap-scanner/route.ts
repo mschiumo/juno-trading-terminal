@@ -548,6 +548,9 @@ export async function GET(request: Request) {
     console.log(`[GapScanner] Completed in ${totalDuration}ms`);
     console.log(`[GapScanner] Results: ${response.data.gainers.length} gainers, ${response.data.losers.length} losers from ${response.scanned} stocks scanned`);
     
+    // Log the full response for testing
+    console.log('[GapScanner] API Response:', JSON.stringify(response, null, 2));
+    
     // Store results if not dry run
     if (!dryRun) {
       await storeScanResults(response);
