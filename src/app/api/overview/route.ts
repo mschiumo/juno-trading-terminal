@@ -5,10 +5,10 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { getAllTrades, Trade } from '@/lib/db/trades-v2';
+import { getAllTrades } from '@/lib/db/trades-v2';
 import { getActiveTrades } from '@/lib/db/active-trades';
 import { getClosedPositions } from '@/lib/db/closed-positions';
-import { TradeStatus, TradeSide } from '@/types/trading';
+import { TradeStatus, TradeSide, Trade } from '@/types/trading';
 
 interface OverviewStats {
   activeTradesCount: number;
