@@ -3,13 +3,15 @@
 import { Calculator, Bookmark } from 'lucide-react';
 import PositionCalculator from './PositionCalculator';
 import WatchlistView from './WatchlistView';
+import IndicesWidget from '@/components/IndicesWidget';
 
 export default function TradeManagementView() {
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+      {/* Header with Indices Widget inline */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <h2 className="text-xl font-bold text-white">Trade Management</h2>
+        <IndicesWidget />
       </div>
 
       {/* Side-by-Side Layout */}
