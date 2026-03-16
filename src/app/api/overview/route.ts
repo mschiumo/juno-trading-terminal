@@ -145,8 +145,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     // Calculate active trades stats
     const activeTradesCount = activeTrades.length;
     const activeTradesValue = activeTrades.reduce((sum, t) => sum + (t.positionValue || 0), 0);
-    // Note: unrealizedPnL requires current market prices - not available in base ActiveTrade type
-    const activeTradesPnL = 0;
+    const activeTradesPnL = activeTrades.reduce((sum, t) => sum + (t.unrealizedPnL || 0), 0);
 
     // Calculate closed trades stats
     const closedTrades = userTrades.filter(t => t.status === TradeStatus.CLOSED);
