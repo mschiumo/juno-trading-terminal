@@ -53,14 +53,32 @@ interface ScanResult {
   };
 }
 
-const FINNHUB_API_KEY = process.env.FINNHUB_API_KEY;
+interface PolygonSnapshot {
+  ticker: string;
+  day: {
+    c: number;    // close
+    v: number;    // volume
+    vw?: number;  // volume weighted avg
+  };
+  prevDay: {
+    c: number;    // previous close
+  };
+  min?: {
+    c: number;    // current price (in extended hours)
+  };
+  lastTrade?: {
+    p: number;    // last trade price
+  };
+}
+
+const POLYGON_API_KEY = process.env.POLYGON_API_KEY;
 
 // Lazy check for API key - don't throw at module load time
-function getFinnhubApiKey(): string {
-  if (!FINNHUB_API_KEY) {
-    throw new Error('FINNHUB_API_KEY environment variable is required');
+function getPolygonApiKey(): string {
+  if (!POLYGON_API_KEY) {
+    throw new Error('POLYGON_API_KEY environment variable is required. Please set it in your environment variables.');
   }
-  return FINNHUB_API_KEY;
+  return POLYGON_API_KEY;
 }
 
 // US Market Holidays 2026
@@ -178,9 +196,9 @@ async function getRedisClient() {
 }
 
 /**
- * Fetch batch quotes from Finnhub
- * Note: Finnhub doesn't support true batch quotes, but we can make parallel requests
- * with rate limiting (60 calls/minute = 1 call per second)
+ * Fetch batch quotes from Polygon
+ * Uses the snapshot endpoint for efficient batch data retrieval
+ * Supports up to 250 tickers per request
  */
 interface QuoteData {
   symbol: string;
@@ -191,45 +209,84 @@ interface QuoteData {
 
 async function fetchBatchQuotes(
   symbols: string[], 
-  delayMs: number = 1000
+  timeoutMs: number = 30000
 ): Promise<Map<string, QuoteData>> {
-  const apiKey = getFinnhubApiKey();
+  const apiKey = getPolygonApiKey();
   const quotes = new Map<string, QuoteData>();
   
-  // Process in batches - rate limited
-  for (let i = 0; i < symbols.length; i++) {
-    const symbol = symbols[i];
+  // Polygon supports up to 250 tickers per request
+  const BATCH_SIZE = 250;
+  const totalBatches = Math.ceil(symbols.length / BATCH_SIZE);
+  
+  for (let batchIndex = 0; batchIndex < totalBatches; batchIndex++) {
+    const start = batchIndex * BATCH_SIZE;
+    const end = Math.min(start + BATCH_SIZE, symbols.length);
+    const batchSymbols = symbols.slice(start, end);
+    
+    const url = `https://api.polygon.io/v2/snapshot/locale/us/markets/stocks/tickers?tickers=${batchSymbols.join(',')}&apiKey=${apiKey}`;
     
     try {
-      const response = await fetch(
-        `https://finnhub.io/api/v1/quote?symbol=${symbol}&token=${apiKey}`,
-        { next: { revalidate: 0 } } // No cache - real-time data
-      );
+      // Create abort controller for timeout
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+      
+      const response = await fetch(url, { 
+        signal: controller.signal,
+        next: { revalidate: 0 } // No cache - real-time data
+      });
+      
+      clearTimeout(timeoutId);
       
       if (!response.ok) {
-        console.warn(`Finnhub quote error for ${symbol}:`, response.status);
+        const errorText = await response.text().catch(() => 'Unknown error');
+        console.warn(`Polygon API error (batch ${batchIndex + 1}/${totalBatches}): ${response.status}`, errorText);
         continue;
       }
       
       const data = await response.json();
       
-      // Finnhub quote response: c: current, pc: previous close, v: volume
-      if (data && data.c !== 0 && data.pc !== 0) {
+      if (!data.tickers || !Array.isArray(data.tickers)) {
+        console.warn(`Polygon API: No tickers data in batch ${batchIndex + 1}`);
+        continue;
+      }
+      
+      // Process each ticker in the response
+      for (const ticker of data.tickers) {
+        const snapshot = ticker as PolygonSnapshot;
+        const symbol = snapshot.ticker;
+        
+        // Get current price (use min.c for pre-market/after-hours, day.c for regular hours, or lastTrade.p)
+        const currentPrice = snapshot.min?.c || snapshot.day?.c || snapshot.lastTrade?.p || 0;
+        const previousClose = snapshot.prevDay?.c || 0;
+        const volume = snapshot.day?.v || 0;
+        
+        // Skip if we don't have valid price data
+        if (currentPrice === 0 || previousClose === 0) {
+          console.warn(`Polygon API: Invalid price data for ${symbol} (current: ${currentPrice}, previous: ${previousClose})`);
+          continue;
+        }
+        
         quotes.set(symbol, {
           symbol,
-          current: data.c,
-          previous: data.pc,
-          volume: data.v || 0
+          current: currentPrice,
+          previous: previousClose,
+          volume
         });
       }
       
+      console.log(`[GapScanner] Batch ${batchIndex + 1}/${totalBatches}: Retrieved ${data.tickers.length} quotes`);
+      
     } catch (error) {
-      console.error(`Error fetching quote for ${symbol}:`, error);
+      if (error instanceof Error && error.name === 'AbortError') {
+        console.error(`Polygon API timeout (batch ${batchIndex + 1}/${totalBatches}) after ${timeoutMs}ms`);
+      } else {
+        console.error(`Error fetching Polygon batch ${batchIndex + 1}/${totalBatches}:`, error);
+      }
     }
     
-    // Rate limiting between requests
-    if (i < symbols.length - 1) {
-      await new Promise(r => setTimeout(r, delayMs));
+    // Small delay between batches to be nice to the API
+    if (batchIndex < totalBatches - 1) {
+      await new Promise(r => setTimeout(r, 100));
     }
   }
   
@@ -273,30 +330,28 @@ async function getCachedResults(date: string): Promise<ScanResult | null> {
 }
 
 /**
- * Main scan function - processes stocks in batches
+ * Main scan function - processes stocks using Polygon batch API
  */
 async function scanForGaps(
   symbols: string[],
   stockInfo: Map<string, StockInfo>,
   options: {
-    batchSize?: number;
-    delayMs?: number;
     minGapPercent?: number;
     minVolume?: number;
     maxPrice?: number;
     minMarketCap?: number;
     dryRun?: boolean;
+    timeoutMs?: number;
   } = {}
 ): Promise<Omit<ScanResult, 'success' | 'source' | 'isWeekend' | 'marketSession' | 'marketStatus' | 'isPreMarket'>> {
   const startTime = Date.now();
   const {
-    batchSize = 50,
-    delayMs = 1000,
     minGapPercent = 5,
     minVolume = 100000,
     maxPrice = 1000,
     minMarketCap = 100_000_000,
-    dryRun = false
+    dryRun = false,
+    timeoutMs = 30000
   } = options;
   
   const gainers: GapStock[] = [];
@@ -311,73 +366,69 @@ async function scanForGaps(
   let skippedMarketCap = 0;
   const errors: string[] = [];
   
-  // Split into batches
-  const totalBatches = Math.ceil(symbols.length / batchSize);
-  console.log(`[GapScanner] Processing ${symbols.length} stocks in ${totalBatches} batches of ${batchSize}`);
+  // Filter out ETFs and derivatives first
+  const filteredSymbols = symbols.filter(symbol => {
+    if (isETFOrDerivative(symbol)) {
+      skippedETF++;
+      return false;
+    }
+    return true;
+  });
   
-  for (let batchIndex = 0; batchIndex < totalBatches; batchIndex++) {
-    const start = batchIndex * batchSize;
-    const end = Math.min(start + batchSize, symbols.length);
-    const batch = symbols.slice(start, end);
+  console.log(`[GapScanner] Processing ${filteredSymbols.length} stocks after filtering ${skippedETF} ETFs/derivatives`);
+  
+  // Fetch all quotes in batches using Polygon snapshot API
+  const quotes = await fetchBatchQuotes(filteredSymbols, timeoutMs);
+  
+  // Process results
+  for (const [symbol, quote] of quotes) {
+    const info = stockInfo.get(symbol);
     
-    console.log(`[GapScanner] Batch ${batchIndex + 1}/${totalBatches}: ${batch.length} stocks`);
-    
-    // Fetch quotes for this batch
-    const quotes = await fetchBatchQuotes(batch, delayMs);
-    
-    // Process results
-    for (const [symbol, quote] of quotes) {
-      const info = stockInfo.get(symbol);
-      
-      // Check market cap filter
-      if (info && info.marketCap < minMarketCap) {
-        skippedMarketCap++;
-        continue;
-      }
-      
-      scanned++;
-      
-      // Calculate gap
-      const gapPercent = ((quote.current - quote.previous) / quote.previous) * 100;
-      
-      // Apply filters
-      if (Math.abs(gapPercent) < minGapPercent) {
-        skippedGap++;
-        continue;
-      }
-      if (quote.volume < minVolume) {
-        skippedVolume++;
-        continue;
-      }
-      if (quote.current > maxPrice) {
-        skippedPrice++;
-        continue;
-      }
-      
-      const stock: GapStock = {
-        symbol,
-        name: info?.name || symbol,
-        price: quote.current,
-        previousClose: quote.previous,
-        gapPercent: Number(gapPercent.toFixed(2)),
-        volume: quote.volume,
-        marketCap: info?.marketCap || 0,
-        status: gapPercent > 0 ? 'gainer' : 'loser'
-      };
-      
-      if (gapPercent > 0) {
-        gainers.push(stock);
-      } else {
-        losers.push(stock);
-      }
+    // Check market cap filter
+    if (info && info.marketCap < minMarketCap) {
+      skippedMarketCap++;
+      continue;
     }
     
-    // Log progress every 10 batches
-    if ((batchIndex + 1) % 10 === 0 || batchIndex === totalBatches - 1) {
-      const progress = Math.round(((batchIndex + 1) / totalBatches) * 100);
-      console.log(`[GapScanner] Progress: ${progress}% (${batchIndex + 1}/${totalBatches} batches)`);
+    scanned++;
+    
+    // Calculate gap
+    const gapPercent = ((quote.current - quote.previous) / quote.previous) * 100;
+    
+    // Apply filters
+    if (Math.abs(gapPercent) < minGapPercent) {
+      skippedGap++;
+      continue;
+    }
+    if (quote.volume < minVolume) {
+      skippedVolume++;
+      continue;
+    }
+    if (quote.current > maxPrice) {
+      skippedPrice++;
+      continue;
+    }
+    
+    const stock: GapStock = {
+      symbol,
+      name: info?.name || symbol,
+      price: quote.current,
+      previousClose: quote.previous,
+      gapPercent: Number(gapPercent.toFixed(2)),
+      volume: quote.volume,
+      marketCap: info?.marketCap || 0,
+      status: gapPercent > 0 ? 'gainer' : 'loser'
+    };
+    
+    if (gapPercent > 0) {
+      gainers.push(stock);
+    } else {
+      losers.push(stock);
     }
   }
+  
+  // Log missing quotes as failures
+  quoteFailures = filteredSymbols.length - quotes.size;
   
   // Sort by gap magnitude
   gainers.sort((a, b) => b.gapPercent - a.gapPercent);
@@ -397,8 +448,8 @@ async function scanForGaps(
     previousDate: getLastTradingDate(),
     durationMs,
     debug: {
-      apiKeyPresent: !!getFinnhubApiKey(),
-      apiKeyLength: getFinnhubApiKey()?.length || 0,
+      apiKeyPresent: !!getPolygonApiKey(),
+      apiKeyLength: getPolygonApiKey()?.length || 0,
       universeSize: symbols.length,
       skippedETF,
       skippedGap,
@@ -427,14 +478,14 @@ export async function GET(request: Request) {
   
   // Parse options from query params
   const dryRun = searchParams.get('dryRun') === 'true';
-  const limit = parseInt(searchParams.get('limit') || '5000', 10);
+  const limit = parseInt(searchParams.get('limit') || '100', 10); // Reduced default to 100
   const forceRefresh = searchParams.get('refresh') === 'true';
   const useCache = searchParams.get('cache') !== 'false';
   const minGapPercent = parseFloat(searchParams.get('minGap') || '5');
   
   try {
     // Check API key
-    const apiKey = getFinnhubApiKey();
+    const apiKey = getPolygonApiKey();
     console.log(`[GapScanner] Starting scan at ${timestamp}`);
     console.log(`[GapScanner] Options: dryRun=${dryRun}, limit=${limit}, forceRefresh=${forceRefresh}`);
     
@@ -473,15 +524,14 @@ export async function GET(request: Request) {
     // Check market session
     const marketSession = getMarketSession();
     
-    // Run the scan
+    // Run the scan with timeout handling
     const scanResults = await scanForGaps(symbols, stockInfo, {
-      batchSize: 50,
-      delayMs: 1000, // 1 second between stocks = 60 calls/min
       minGapPercent,
       minVolume: 100000,
       maxPrice: 1000,
       minMarketCap: 100_000_000,
-      dryRun
+      dryRun,
+      timeoutMs: 30000 // 30 second timeout per batch
     });
     
     const totalDuration = Date.now() - startTime;
@@ -511,13 +561,29 @@ export async function GET(request: Request) {
     console.error('[GapScanner] Error:', error);
     const totalDuration = Date.now() - startTime;
     
+    // Provide more helpful error messages
+    let errorMessage = 'Failed to fetch gap data';
+    let statusCode = 500;
+    
+    if (error instanceof Error) {
+      if (error.message.includes('POLYGON_API_KEY')) {
+        errorMessage = 'Polygon API key is missing. Please configure POLYGON_API_KEY environment variable.';
+        statusCode = 503;
+      } else if (error.message.includes('timeout') || error.name === 'AbortError') {
+        errorMessage = 'Request timed out. The Polygon API may be slow or unavailable. Try reducing the limit parameter.';
+        statusCode = 504;
+      } else {
+        errorMessage = error.message;
+      }
+    }
+    
     return NextResponse.json({
       success: false,
-      error: 'Failed to fetch gap data',
+      error: errorMessage,
       timestamp,
       durationMs: totalDuration,
       message: error instanceof Error ? error.message : String(error)
-    }, { status: 500 });
+    }, { status: statusCode });
   }
 }
 
